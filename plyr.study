@@ -1,0 +1,203 @@
+library(plyr)
+a<-matrix(1:21,3,7)
+b<-aaply(a,.margins =2,.fun=mean)
+xx <- array(1:24, c(3, 4, 2)) 
+yy <- array(1:36, c(2, 3, 3, 2)) 
+###############a*ply函数
+xx<-rep(1:2,3:4);
+yy<-c('MR A','MR B','MR C', 'MR D', 'MR E','MR F');
+zz<-'discussin group'
+name.list<-list(group=xx,name=yy,description=zz)
+aaply(a,1,mean,.progress="none")
+aaply(a,1,mean,.progress="text")
+aaply(a,1,mean,.progress="win")###############调用windows自带进度条
+
+###########d*ply函数
+names=c("John","Mary","Alice","Peter","Roger","Phyillis")
+age=c(13,15,14,13,14,13)
+sex=c("Male","Female","Female","Male","Male","Female")
+data=data.frame(names,age,sex)
+amean=function(data)
+{
+  agemean=mean(data[,2])
+  return(agemean)
+}
+daply(data,.(sex),amean)
+ddply(data,.(sex),amean)
+dlply(data,.(sex),.fun=amean)
+##############l*ply函数
+a=c(1,2,3,4,1,5,7,8,9,4,2)
+b=c(1,2,5,7,6,4,8,7)
+c=c(4,8,9,1,2,3,1)
+list=list(a,b,c)
+llply(list,mean)
+laply(list,mean)
+ldply(list,mean)
+
+##############m*ply函数把array或者dataframe的参数数值放进函数中，得到dataframe（mdply），array（maply）或者list（mlply）
+data=data.frame(n=c(10,100,50),mean=c(5,5,10),sd=c(1,2,1))
+mlply(data,rnorm)
+#######################splat函数
+head(mtcars,5)
+hp_per_cyl<-function(hp, cyl, ...) hp/ cyl
+splat(hp_per_cyl)(mtcars[1,])
+splat(hp_per_cyl)(mtcars)
+alply(data,1,splat(rnorm))#######和mlply(data,rnorm)效果一致
+#########################each函数
+a=c(1,2,3,4,1,5,7,8,9,4,2)
+each(min,max,mean)(a)
+each(length,mean,var)(rnorm(100))
+fun<-function(x) c(min = min(x), max = max(x),mean=mean(x))
+###############################################################################colwise函数,有用
+head(baseball, 5)
+nmissing = function(x)
+  sum(is.na(x))
+colwise(nmissing)(baseball)
+a <- ddply(baseball, .(year), colwise(nmissing)) ####按照年份统计各行缺失值个数
+ddply(baseball, .(year), colwise(nmissing, .(sb, cs, so)))  ############把特定的列取出来
+ddply(baseball, .(year), colwise(nmissing, c("sb", "cs", "so")))###表达同上
+ddply(baseball, .(year), colwise(nmissing,  ~ sb + cs + so)) #######表达同上
+
+ddply(baseball, .(year), colwise(nmissing, is.character))
+ddply(baseball, .(year), colwise(nmissing, is.numeric))
+ddply(baseball, .(year), colwise(nmissing, is.discrete))
+ddply(baseball, .(year), numcolwise(nmissing))#######效果同上上行
+ddply(baseball, .(year), catcolwise(nmissing))########效同上上行
+
+
+##########################failwith函数
+f=function(x)if(x==1)stop("Error!")else 1
+f(1)
+f(2)
+safef=failwith(NULL,f)
+safef(1)
+safef(2)
+safef=failwith(NULL,f,quiet=TRUE)
+safef(1)
+safef(2)
+
+##############################arrange(df, .(var1), .(var2)…)???作用：按照列给数据框排序，有用
+mtcars
+arrange(mtcars,disp,cyl)
+
+cars=cbind(vehicle=row.names(mtcars),mtcars)
+arrange(cars,cyl,disp)
+arrange(cars,cyl,desc(disp))
+a=data.frame(x1=c(2,3),x2=c(5,6))
+rename(a,replace = c("x1"="niucha"))
+#######################rename函数
+rename(x, replace, warn_missing=TRUE)
+x=c("a"=1,"b"=2,"c"=3,"d"="c")
+rename(x,replace=c("b"="c"))
+############################???match_df(x, y, on=NULL)???作用：从一个数据框中提取与另一个数据框中相同的行，有用
+count(baseball,"id")
+longterm=subset(count(baseball,"id"),freq>25)
+bb_longterm=match_df(baseball,longterm,on="id")
+bb_longterm
+#######################################join函数联合两个数据框
+x1=c(1,2,3,4)
+x2=c(5,6,7,8)
+xx=data.frame(x1,x2)
+y1=x1*10
+yy=data.frame(y1,x2)
+yy[,2]=c(1,2,6,7)
+join(xx,yy,by="x2")
+join(xx,yy,type="inner")
+join(xx,yy,type="right")
+join(yy,xx,by="x2")
+join(xx,yy,type="full")
+
+yy[,2]=c(6,6,6,6)
+join(xx,yy,"x2",type="inner",match="all")
+join(xx,yy,"x2",type="inner",match="first")
+melge(xx,yy)
+##########################################################baseball案例,有用
+head(baseball,5)
+baberuth<-subset(baseball, id == "ruthba01")
+baberuth<-transform(baberuth, cyear= year -min(year) + 1)
+
+baseball <-ddply(baseball, .(id), transform,cyear= year -min(year) + 1)
+baseball <-subset(baseball, ab >= 25)
+xlim<-range(baseball$cyear, na.rm=TRUE)
+ylim<-range(baseball$rbi/ baseball$ab, na.rm=TRUE)
+plotpattern<-function(df) {qplot(cyear, rbi/ ab, data = df, geom= "line", xlim= xlim, ylim= ylim)}
+pdf("paths.pdf", width = 8, height = 4)
+d_ply(baseball, .(reorder(id, rbi/ ab)), failwith(NA, plotpattern),.print=TRUE)
+dev.off()
+
+model <-function(df) {lm(rbi/ ab ~ cyear, data = df)}
+model(baberuth)
+bmodels<-dlply(baseball, .(id), model)
+rsq<-function(x) summary(x)$r.squared
+bcoefs<-ldply(bmodels, function(x) c(coef(x), rsquare= rsq(x)))
+names(bcoefs)[2:3] <-c("intercept", "slope")
+head(bcoefs,5)
+hist(bcoefs$rsquare,breaks=20,col="black")
+baseballcoef<-join(baseball, bcoefs, by = "id",type="inner")######找出拟合最好的模型
+
+########################################################################Ozone
+value <-ozone[1, 1, ]
+time <-1:72 / 12
+plot(c(1:72),value,main=NULL,xlab="time",ylab="value",type="l")
+box(bty="l")
+grid(nx=NA,ny=NULL,lty=1,lwd=1,col="gray")
+
+plot(value[1:12],type="b",pch=19,lwd=2,xaxt="n",col="black",
+     xlab="month",ylab="value")
+axis(1,at=1:12,labels=c("Jan", "Feb", "Mar", "Apr", "May",
+                        "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+lines(value[13:24],col="red",type="b",pch=19,lwd=2)
+lines(value[25:36],col="orange",type="b",pch=19,lwd=2)
+lines(value[37:48],col="purple",type="b",pch=19,lwd=2)
+lines(value[49:60],col="blue",type="b",pch=19,lwd=2)
+lines(value[61:72],col="green",type="b",pch=19,lwd=2)
+legend("bottomright",legend=c("1995","1996","1997","1998","1999","2000"),
+       lty=1,lwd=2,pch=rep(19,6),col=c("black","red","orange","purple","blue","green"),
+       ncol=1,cex=1.2,bty="n",
+       text.col=c("black","red","orange","purple","blue","green"),inset=0.01)
+
+##########以月份为自变量回归
+month.abbr<-c("Jan", "Feb", "Mar", "Apr", "May",
+              "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+month <-factor(rep(month.abbr, length = 72), levels = month.abbr)
+year <-rep(1:6, each = 12)
+library("MASS")
+deseas1 <-rlm(value ~ month -1)
+summary(deseas1)
+
+deseasf<-function(value) rlm(value ~ month -1, maxit= 50)
+models <-alply(ozone, 1:2, deseasf)
+failed <-laply(models, function(x) !x$converged)
+
+coefs<-laply(models, coef)
+dimnames(coefs)[[3]] <-month.abbr
+names(dimnames(coefs))[3] <-"month"
+deseas<-laply(models, resid)
+dimnames(deseas)[[3]] <-1:72
+names(dimnames(deseas))[3] <-"time"
+
+install.packages("reshape")
+coefs_df<-melt(coefs)
+head(coefs_df)
+coefs_df<-ddply(coefs_df, .(lat, long), transform, avg= mean(value), std= value / max(value))
+head(coefs_df)
+deseas_df<-melt(deseas)
+head(deseas_df)
+
+
+library(ggplot2)
+coef_limits<-range(coefs_df$value)
+coef_mid<-mean(coefs_df$value)
+monthsurface<-function(mon)
+{
+  df<-subset(coefs_df, month == mon)
+  qplot(long, lat, data = df, fill = value, geom="tile") +
+    scale_fill_gradient(limits = coef_limits,
+                        low = "lightskyblue", high = "yellow")
+}
+monthsurface("Jan")
+monthsurface("Jul")
+pdf("ozone.pdf", width = 8, height = 8)
+l_ply(month.abbr, monthsurface, .print = TRUE)
+dev.off()
+
